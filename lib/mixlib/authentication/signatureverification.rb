@@ -64,7 +64,7 @@ module Mixlib
 
           # if there are 11 headers, the sort breaks - it becomes lexicographic sort rather than numeric [cb]
           @request_signature = headers.find_all { |h| h[0].to_s =~ /^x_ops_authorization_/ }.sort { |x,y| x.to_s <=> y.to_s}.map { |i| i[1] }.join("\n")
-          Mixlib::Authentication::Log.debug "Reconstituted request signature: #{@request_signature}"
+          Mixlib::Authentication::Log.debug "Extracted signature from request header:\n#{@request_signature}"
           
           # Pull out any file that was attached to this request, using multipart
           # form uploads.
@@ -98,7 +98,7 @@ module Mixlib
             @hashed_body = digester.hash_string(body)
           end
           
-          Mixlib::Authentication::Log.debug "Authenticating user : #{user_id}, User secret is : #{@user_secret}, Request signature is :\n#{@request_signature}, Hashed Body is : #{@hashed_body}"
+          Mixlib::Authentication::Log.debug "Authenticating user with params from request:\nUser ID: #{user_id}\nUser secret:\n#{@user_secret}\nRequest signature is:\n#{@request_signature}\nHashed Body:\n#{@hashed_body}\n"
           
           #BUGBUG Not doing anything with the signing description yet [cb]          
           parse_signing_description
@@ -108,7 +108,7 @@ module Mixlib
           timeskew_is_acceptable = timestamp_within_bounds?(Time.parse(timestamp), Time.now)
           hashes_match = @content_hash == hashed_body
         rescue StandardError=>se
-          raise StandardError,"Failed to authenticate user request.  Most likely missing a necessary header: #{se.message}", se.backtrace
+          raise StandardError,"Failed to authenticate user request.  Most likely, the private key used to sign the request does not match the public key used to verify it: #{se.message}", se.backtrace
         end
         
         Mixlib::Authentication::Log.debug "Candidate Block is: '#{candidate_block}'\nRequest decrypted block is: '#{request_decrypted_block}'\nCandidate content hash is: #{hashed_body}\nRequest Content Hash is: '#{@content_hash}'\nSignatures match: #{signatures_match}, Allowed Time Skew: #{timeskew_is_acceptable}, Hashes match?: #{hashes_match}\n"
